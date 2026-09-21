@@ -3,10 +3,30 @@
 This workspace follows the first-stage plan in
 `self_spec_future_hbm_research_plan.docx`: single-GPU profiling of draft,
 verify, and KV-transfer phases, followed by FutureCapacityTracker and adaptive
-draft-length work. The active implementation route is now **SparseSpec on one
-A100**, using the local `/data/models/Qwen3-8B` checkpoint.
+draft-length work. The current integration route starts from a clean official
+**vLLM + LMCache MP** baseline and adds self-speculation only after that
+control passes. The previous SparseSpec and MagicDec experiments remain below
+as references.
 
-## Active route: SparseSpec on A100
+## Active route: official vLLM + LMCache MP baseline
+
+The isolated environment contains only published wheels: vLLM 0.28.0,
+LMCache 0.5.5, and their resolved PyTorch 2.13.0+cu130 runtime. It does not use
+an editable vLLM checkout or a patched LMCache tree.
+
+```bash
+source scripts/activate_clean_lmcache.sh
+python scripts/check_clean_lmcache.py
+CUDA_VISIBLE_DEVICES=0 bash scripts/run_clean_lmcache_smoke.sh
+```
+
+The smoke wrapper starts an independently managed LMCache MP server, runs two
+Qwen3-4B requests with a shared prefix, proves that 1,792 tokens are stored and
+then retrieved, checks logs for cache-lifecycle failures, and shuts the server
+down. See [docs/official_vllm_lmcache_baseline.md](docs/official_vllm_lmcache_baseline.md)
+for installation and design notes.
+
+## Previous route: SparseSpec on A100
 
 The isolated project-local environment is already installed at
 `.conda/envs/sparsespec-a100`. Activate it with the helper so that the SM80

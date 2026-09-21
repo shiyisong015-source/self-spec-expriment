@@ -8,5 +8,6 @@ datasets/
 hf_cache/
 *.nsys-rep
 *.sqlite
+artifacts/*.log
 __pycache__/
 *.py[cod]

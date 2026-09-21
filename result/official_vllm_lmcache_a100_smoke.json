@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-21",
+  "model": "/data/models/Qwen3-4B",
+  "gpu": "NVIDIA A100-PCIE-40GB",
+  "python": "3.12.14",
+  "torch": "2.13.0+cu130",
+  "vllm": "0.28.0",
+  "lmcache": "0.5.5",
+  "connector": "lmcache.integration.vllm.lmcache_mp_connector.LMCacheMPConnector",
+  "chunk_size": 256,
+  "stored_tokens": 1792,
+  "retrieved_tokens": 1792,
+  "double_unpin_warnings": 0,
+  "negative_pin_count_warnings": 0,
+  "shutdown_cuda_ipc_warnings": 1,
+  "status": "pass"
+}
