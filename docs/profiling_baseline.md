@@ -51,6 +51,7 @@ source scripts/activate_sparsespec.sh
 nsys profile \
   --force-overwrite=true \
   --trace=cuda,nvtx,osrt \
+  --cuda-memory-usage=true \
   --trace-fork-before-exec=true \
   --output=data/profiles/magicdec_nvtx_smoke \
   env VLLM_SELFSPEC_PROFILE=1 \
