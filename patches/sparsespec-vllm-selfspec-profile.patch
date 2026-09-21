@@ -1,0 +1,177 @@
+diff --git a/vllm/v1/core/sched/scheduler.py b/vllm/v1/core/sched/scheduler.py
+index 6deef548b9..66f24ee6d0 100644
+--- a/vllm/v1/core/sched/scheduler.py
++++ b/vllm/v1/core/sched/scheduler.py
+@@ -34,6 +34,8 @@ from vllm.v1.kv_cache_interface import KVCacheConfig
+ from vllm.v1.metrics.stats import SchedulerStats
+ from vllm.v1.outputs import DraftTokenIds, KVConnectorOutput, ModelRunnerOutput
+ from vllm.v1.request import Request, RequestStatus, SelfSpecState
++from vllm.v1.selfspec_profile import emit as selfspec_emit
++from vllm.v1.selfspec_profile import nvtx_range as selfspec_nvtx_range
+ from vllm.v1.spec_decode.metrics import SpecDecodingStats
+ from vllm.v1.structured_output import StructuredOutputManager
+ 
+@@ -61,6 +63,7 @@ class Scheduler(SchedulerInterface):
+         self.log_stats = log_stats
+         self.structured_output_manager = structured_output_manager
+         self.is_encoder_decoder = vllm_config.model_config.is_encoder_decoder
++        self.selfspec_profile_iteration = 0
+ 
+         # include_finished_set controls whether a separate set of finished
+         # request ids should be included in the EngineCoreOutputs returned
+@@ -254,6 +257,7 @@ class Scheduler(SchedulerInterface):
+         return False
+ 
+     def schedule(self) -> SchedulerOutput:
++        self.selfspec_profile_iteration += 1
+         # NOTE(woosuk) on the scheduling algorithm:
+         # There's no "decoding phase" nor "prefill phase" in the scheduler.
+         # Each request just has the num_computed_tokens and
+@@ -795,6 +799,40 @@ class Scheduler(SchedulerInterface):
+             self.kv_event_publisher.publish(batch)
+ 
+         self._update_after_schedule(scheduler_output)
++        batch_size = len(num_scheduled_tokens)
++        forward_token_count = sum(num_scheduled_tokens.values())
++        with selfspec_nvtx_range("scheduler_step"):
++            for req_id in num_scheduled_tokens:
++                request = self.requests.get(req_id)
++                if (request is None or
++                        request.self_spec_state == SelfSpecState.NORMAL):
++                    continue
++                mode = ("verify" if request.self_spec_state ==
++                        SelfSpecState.VERIFYING else "draft")
++                full_pages = ((request.num_computed_tokens + self.block_size - 1)
++                              // self.block_size)
++                if mode == "draft":
++                    offset = self.req_to_full_kv_start_offset.get(req_id, 0)
++                    sink = min(self.streaming_cache_sink_size_blocks,
++                               full_pages)
++                    recent = int(request.num_computed_tokens *
++                                 self.streaming_cache_recent_ratio /
++                                 self.block_size)
++                    recent_start = max(sink, offset - recent)
++                    sparse_pages = (sink + max(0, offset - recent_start) +
++                                    max(0, full_pages - offset))
++                else:
++                    sparse_pages = 0
++                selfspec_emit(
++                    "scheduler_step", iteration=self.selfspec_profile_iteration,
++                    request_id=req_id, mode=mode,
++                    context_len=request.num_computed_tokens,
++                    current_draft_len=len(request.get_pending_tokens()),
++                    gamma=self.self_spec_threshold,
++                    sparse_page_count=sparse_pages,
++                    full_page_count=full_pages, accepted_tokens=None,
++                    batch_size=batch_size,
++                    forward_token_count=forward_token_count)
+         return scheduler_output
+ 
+     def _update_after_schedule(
+@@ -1124,6 +1162,19 @@ class Scheduler(SchedulerInterface):
+ 
+                 # case 1: self-spec stats
+                 if self.use_self_specs and request.self_spec_state == SelfSpecState.VERIFYING:
++                    selfspec_emit(
++                        "verify_result",
++                        iteration=self.selfspec_profile_iteration,
++                        request_id=req_id, mode="verify",
++                        context_len=request.num_computed_tokens,
++                        current_draft_len=num_draft_tokens,
++                        gamma=self.self_spec_threshold,
++                        sparse_page_count=0,
++                        full_page_count=((request.num_computed_tokens +
++                                         self.block_size - 1) // self.block_size),
++                        accepted_tokens=num_accepted,
++                        batch_size=len(num_scheduled_tokens),
++                        forward_token_count=sum(num_scheduled_tokens.values()))
+                     #print(f"[DEBUG] make_spec_decoding_stats for self-spec stats | num_draft_tokens={num_draft_tokens} | num_accepted_tokens={num_accepted}")
+                     self_spec_spec_decoding_stats = self.make_spec_decoding_stats(
+                         self_spec_spec_decoding_stats,
+diff --git a/vllm/v1/worker/gpu_model_runner.py b/vllm/v1/worker/gpu_model_runner.py
+index 0a77198879..d80290d924 100644
+--- a/vllm/v1/worker/gpu_model_runner.py
++++ b/vllm/v1/worker/gpu_model_runner.py
+@@ -100,6 +100,7 @@ from vllm.v1.spec_decode.ngram_proposer import NgramProposer
+ from vllm.v1.structured_output.utils import apply_grammar_bitmask
+ from vllm.v1.utils import CpuGpuBuffer, record_function_or_nullcontext
+ from vllm.v1.request import SelfSpecState
++from vllm.v1.selfspec_profile import nvtx_range as selfspec_nvtx_range
+ from vllm.v1.worker.gpu_input_batch import CachedRequestState, InputBatch
+ from vllm.v1.worker.gpu_ubatch_wrapper import UBatchWrapper
+ from vllm.v1.worker.kv_connector_model_runner_mixin import (
+@@ -2473,6 +2474,17 @@ class GPUModelRunner(LoRAModelRunnerMixin, KVConnectorModelRunnerMixin):
+ 
+         # Run the model.
+         # Use persistent buffers for CUDA graphs.
++        states = [
++            getattr(self.requests.get(req_id), "self_spec_state",
++                    SelfSpecState.NORMAL)
++            for req_id in scheduler_output.num_scheduled_tokens
++        ]
++        if SelfSpecState.VERIFYING in states:
++            profile_phase, attention_phase = "verify_step", "full_attention"
++        elif SelfSpecState.ACCUMULATING in states:
++            profile_phase, attention_phase = "draft_step", "sparse_attention"
++        else:
++            profile_phase, attention_phase = "prefill", "full_attention"
+         with (set_forward_context(
+                 attn_metadata,
+                 self.vllm_config,
+@@ -2482,6 +2494,8 @@ class GPUModelRunner(LoRAModelRunnerMixin, KVConnectorModelRunnerMixin):
+                 batch_descriptor=batch_descriptor,
+                 ubatch_slices=ubatch_slices,
+         ), record_function_or_nullcontext("Forward"),
++              selfspec_nvtx_range(profile_phase),
++              selfspec_nvtx_range(attention_phase),
+               self.maybe_get_kv_connector_output(scheduler_output) as
+               kv_connector_output):
+             model_output = self.model(
+diff --git a/vllm/v1/selfspec_profile.py b/vllm/v1/selfspec_profile.py
+new file mode 100644
+index 0000000000..60f1e8dd1e
+--- /dev/null
++++ b/vllm/v1/selfspec_profile.py
+@@ -0,0 +1,42 @@
++# SPDX-License-Identifier: Apache-2.0
++"""Opt-in structured logging and NVTX ranges for self-spec profiling."""
++
++import json
++import os
++import sys
++import time
++from contextlib import contextmanager
++from functools import lru_cache
++from typing import Any, Iterator
++
++
++@lru_cache(maxsize=1)
++def enabled() -> bool:
++    return os.getenv("VLLM_SELFSPEC_PROFILE", "0").lower() in (
++        "1", "true", "yes", "on")
++
++
++def emit(event: str, **fields: Any) -> None:
++    if not enabled():
++        return
++    record = {"timestamp": time.time(), "event": event, **fields}
++    line = json.dumps(record, sort_keys=True, separators=(",", ":"))
++    path = os.getenv("VLLM_SELFSPEC_PROFILE_LOG")
++    if path:
++        with open(path, "a", encoding="utf-8") as output:
++            output.write(line + "\n")
++    else:
++        print(line, file=sys.stderr, flush=True)
++
++
++@contextmanager
++def nvtx_range(name: str) -> Iterator[None]:
++    if not enabled():
++        yield
++        return
++    import torch
++    torch.cuda.nvtx.range_push(name)
++    try:
++        yield
++    finally:
++        torch.cuda.nvtx.range_pop()
