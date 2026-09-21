@@ -1,0 +1,40 @@
+Job Args:
+{'model_name': '/data/models/Qwen3-8B', 'max_batch_size': 1, 'num_requests': 1, 'admit_policy': 'offloading', 'tp_ranks': 1, 'kv_cache': 'pillar', 'eos_token_id': [151645, 151643, 151645, None], 'enable_wandb': False, 'async_cpu': False, 'enable_cuda_graph': False, 'chunk_size': 256, 'batch_policy': 'greedy', 'trace_name': 'local-smoke', 'temperature': 0.0, 'enable_torch_profiler': False, 'profiler_result_dir': 'result/sparsespec-a100-smoke-cached', 'spec_stride': 4, 'budget_ratio': 0.05, 'num_min_budget': 16, 'num_sink_tokens': 4}
+Model Config:
+ModelArgs(max_position_embeddings=40960, scaling_factor=1.0, low_freq_factor=None, high_freq_factor=None, vocab_size=151936, num_hidden_layers=36, num_attention_heads=32, num_key_value_heads=8, hidden_size=4096, intermediate_size=12288, head_dim=128, rope_theta=1000000, rms_norm_eps=1e-06, attention_bias=False, tie_word_embeddings=False, eos_token_id=151645, original_max_position_embeddings=None, model_name='/data/models/Qwen3-8B/config.json')
+Benchmarking Results:
++-----------------------------+----------+
+| Metric                      |    Value |
++=============================+==========+
+| time (s)                    |   0.9142 |
++-----------------------------+----------+
+| Finished Requests           |   1      |
++-----------------------------+----------+
+| Total Input Tokens          |  20      |
++-----------------------------+----------+
+| Total Output Tokens         |  20      |
++-----------------------------+----------+
+| Avg. Input Tokens           |  20      |
++-----------------------------+----------+
+| Avg. Output Tokens          |  20      |
++-----------------------------+----------+
+| Input Throughput (tok/s)    |  21.88   |
++-----------------------------+----------+
+| Output Throughput (tok/s)   |  21.88   |
++-----------------------------+----------+
+| Total Throughput (tok/s)    |  43.76   |
++-----------------------------+----------+
+| Graph Captured Tokens       |   0      |
++-----------------------------+----------+
+| Graph Padded Tokens         |   0      |
++-----------------------------+----------+
+| Graph Captured Ratio        |   0      |
++-----------------------------+----------+
+| Graph Padded Ratio          |   0      |
++-----------------------------+----------+
+| Accepted Speculative Tokens |  15      |
++-----------------------------+----------+
+| Total Speculative Tokens    |  15      |
++-----------------------------+----------+
+| Acceptance Rate             | 100      |
++-----------------------------+----------+

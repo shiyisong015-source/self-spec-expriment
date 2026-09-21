@@ -1,0 +1,108 @@
+{
+  "model": "/data/models/Qwen3-8B",
+  "method": "self_specs",
+  "gpu": "0",
+  "engine_init_seconds": 16.301544722169638,
+  "generation_seconds": 0.8486002627760172,
+  "prompt_tokens": 16,
+  "output_tokens": 48,
+  "generated_text": " 推测解码通过利用模型对多个候选解码路径的并行处理能力，减少了传统逐词生成所需的重复计算。它通过在生成过程中引入并行性，使得模型能够同时探索多个可能的输出",
+  "self_spec_metrics": [
+    {
+      "name": "vllm:self_spec_num_drafts",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_draft_tokens",
+      "value": 48,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens",
+      "value": 48,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "0"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "1"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "2"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "3"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "4"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "5"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "6"
+      }
+    },
+    {
+      "name": "vllm:self_spec_num_accepted_tokens_per_pos",
+      "value": 6,
+      "labels": {
+        "model_name": "/data/models/Qwen3-8B",
+        "engine": "0",
+        "position": "7"
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+name: self-spec-hbm
+
+channels:
+  - defaults
+
+dependencies:
+  # Vegas/vLLM supports Python 3.10--3.13. Python 3.12 is a conservative
+  # choice for CUDA extension and profiling-tool compatibility.
+  - python=3.12
+  - pip>=24
+  - setuptools>=77,<81
+  - wheel
+  - cmake>=3.26
+  - ninja
+  - git
+  - git-lfs
+  - pkg-config
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - pyyaml
+  - psutil
+  - pytest
+  - pip:
+      - datasets
+      - nvidia-ml-py

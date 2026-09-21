@@ -1,0 +1,33 @@
+diff --git a/vllm/v1/spec_decode/sparse_attn/attn_overrider/vegas.py b/vllm/v1/spec_decode/sparse_attn/attn_overrider/vegas.py
+--- a/vllm/v1/spec_decode/sparse_attn/attn_overrider/vegas.py
++++ b/vllm/v1/spec_decode/sparse_attn/attn_overrider/vegas.py
+@@ -234,6 +234,29 @@ class VegasAttnOverrider(BaseAttnOverrider):
+         kwargs["block_table"] = \
+             self._page_table[self.curr_layer, :self.batch_size]
+ 
++        # Vegas represents every selected KV slot as a page of size one. This
++        # is supported by its FA3 path, but FA2 (used on Ampere/A100) requires
++        # paged KV blocks whose size is divisible by 16. For FA2, materialize
++        # the selected slots as ordinary variable-length K/V tensors instead.
++        # This keeps the implementation functionally usable on Ampere; the
++        # extra gather means it must not be used for performance comparisons.
++        if kwargs.get("fa_version") == 2:
++            counts = self._topk_budget[:self.batch_size].cpu().tolist()
++            slots = torch.cat([
++                kwargs["block_table"][batch_idx, :count]
++                for batch_idx, count in enumerate(counts)
++            ])
++            kwargs["k"] = kwargs["k"].flatten(0, 1).index_select(0, slots)
++            kwargs["v"] = kwargs["v"].flatten(0, 1).index_select(0, slots)
++            kwargs["cu_seqlens_k"] = torch.tensor(
++                [0, *torch.tensor(counts).cumsum(0).tolist()],
++                device=self.device,
++                dtype=torch.int32,
++            )
++            kwargs["max_seqlen_k"] = max(counts)
++            kwargs["seqused_k"] = None
++            kwargs["block_table"] = None
++
+         return BaseAttnOverrider._original_attn_func(*args, **kwargs)
+ 
+     def _verify_attention(self, *args, **kwargs):
