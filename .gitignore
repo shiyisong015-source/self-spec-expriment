@@ -3,5 +3,10 @@
 external/
 models/
 profiles/
+data/
+datasets/
+hf_cache/
+*.nsys-rep
+*.sqlite
 __pycache__/
 *.py[cod]
