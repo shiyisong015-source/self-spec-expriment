@@ -1,5 +1,28 @@
 # Self-Speculation / Future-HBM research environment
 
+## Current target: VeriCache-style reproduction on A100
+
+The current milestone is a correctness-first, single-A100 reproduction of the
+VeriCache long-context mechanism: draft with a compressed GPU-resident KV view,
+reload full KV from host memory for verification, and match full-KV greedy
+output token for token. The dated implementation plan and explicit MVP boundary
+are in
+[docs/vericache_a100_reproduction_plan.md](docs/vericache_a100_reproduction_plan.md).
+
+The first bring-up preserves the already-tested, published-wheel control:
+
+```bash
+source scripts/activate_clean_lmcache.sh
+python scripts/check_clean_lmcache.py
+CUDA_VISIBLE_DEVICES=0 bash scripts/run_clean_lmcache_smoke.sh
+```
+
+The VeriCache implementation will be developed as an explicit patch series on
+an official vLLM source tag, with LMCache kept at its official tag. The Vegas
+fork is reference material only and is not part of the new baseline. The first
+self-spec milestone keeps full KV on GPU; host offload is added only after the
+same-model draft/verify state machine passes correctness tests.
+
 This workspace follows the first-stage plan in
 `self_spec_future_hbm_research_plan.docx`: single-GPU profiling of draft,
 verify, and KV-transfer phases, followed by FutureCapacityTracker and adaptive
